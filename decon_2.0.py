@@ -38,8 +38,8 @@ for jikn in filenames:
 		inputpeakloc='./run6_param_file.text'
 		show_title=True #this turns on or off the title on the graphs
 		leftright=True #this applies to fitting if this = False then all points are used in fit  if True fits only data between the limits specified in the left and right variables, remember this is NMR so x axis is reversed. 
-		left=-82.6 #desired left limit of analysis
-		right=-84.6 #desired right limit of analysis
+		left=15 #desired left limit of analysis
+		right=-15 #desired right limit of analysis
 		
 		setyh=False #set to False for auto y scale
 		setyl=-0.003 #sets lower limit of y axis when setyh is a float (number) set setyh to False for auto y scale.
@@ -47,8 +47,8 @@ for jikn in filenames:
 		labelfont=30 #set the font size of the x-y axis labels (ppm and intensity)
 		legendfont=12 #set the font size of the legends
 		xviewset=True ##determines whether left and right are controlled for the view graphed
-		leftview=-82.6 #desired left limit of graph (for view only)
-		rightview=-84.6 #desired right limit of the graph (for view only)
+		leftview=15#desired left limit of graph (for view only)
+		rightview=-15 #desired right limit of the graph (for view only)
 		showsmooth=True ##set this to True to show smoothed 
 		
 		colorblind=False
@@ -58,7 +58,7 @@ for jikn in filenames:
 		leftx=False#controls whether end axis label is shown
 		rightx=False#controls whether end axis label is shown
 		num_of_mc_peaks=1 #number of monte carlo fits to run
-		whichcol=0#if you have a multi-column text file (with separate data sets in each column) set this to the column you want to analyze. NOTE!! 0 is the first column
+		whichcol=1#if you have a multi-column text file (with separate data sets in each column) set this to the column you want to analyze. NOTE!! 0 is the first column
 		fac=6 #number to multiply rms by to determine where to put the spectrum rainbow
 		exhaust=False##set this to True if you want the most exhaustive method run for deleting unecessary peaks, however it often takes a lot longer to run. If set to False then a quicker close to as good method runs. 
 		plotresid=True ###whether residuals are plotted on graphs
