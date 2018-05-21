@@ -1,3 +1,5 @@
+import traceback
+
 import numpy as n
 import seaborn as sns
 import sys
@@ -7,14 +9,14 @@ import math as m
 from matplotlib.backends.backend_pdf import PdfPages
 import scipy.signal as sig
 import lmfit as lm
-print 'lm version',lm.__version__
+print('lm version',lm.__version__)
 import csv
 from matplotlib import mlab as ml
 import matplotlib.ticker as mticker
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter, AutoMinorLocator
 #from matplotlib import font_manager as fontm
 ########here are some things that may need to be adjusted for your specific application.
-filenames=['WT DMSO Mock_20_2x']
+filenames=['S1 Data']
 #savemetime=[0,1,2,3,4,5,6,7,8,9,10,11]
 savemetime=[False,True]
 
@@ -28,7 +30,7 @@ for jikn in filenames:
 		sirc=-20
 		fn=jikn+".txt"### This is where you should put the name of the file you want to analyze str(raw_input('Enter name of text file to analyze '))
 		well_file=""+fn ##this is the path to the file you want to analyze
-		print 'analyzing this file',well_file
+		print('analyzing this file',well_file)
 		freqsig=658.8021882 ##need to change this to whatever the precession frequency is of the atom you are analyzing (e.g for fluorine on a '400' NMR it is 376.5 for proton in would be ~400)
 		Plimit=15 # Two BICs that differ less than this in value are considered equally good. If you put this value very high it will fit less peaks as adding more peaks won't improve the BIC more than a high value.
 		linewidthgraph=4 ##set the linewidth of some of the graphs
@@ -112,7 +114,7 @@ for jikn in filenames:
 			idx = (n.abs(array-value)).argmin()
 			return idx
 		Raw1 =[]
-		with open(well_file, 'rb') as f:
+		with open(well_file, 'rt') as f:
 			reader = csv.reader(f)
 			counter7=0
 		#    counter5=0
@@ -129,14 +131,14 @@ for jikn in filenames:
 					hipster=row[0].split()
 					Raw1.append(float(hipster[whichcol]))
 		Raw2=n.array(Raw1)
-		print 's',s,'e',e ##s is the value on the left of the textfile line number four (the high value) and e is the value of the right (low value) because nmr x axis are weird
+		print('s',s,'e',e) ##s is the value on the left of the textfile line number four (the high value) and e is the value of the right (low value) because nmr x axis are weird
 		specwidth=n.abs(s-e)
 		
-		print 'specwidth',specwidth
-		print 'number of data points',dp
+		print('specwidth',specwidth)
+		print('number of data points',dp)
 		step=specwidth/(dp-1) ##ppm per step this is the step size for the ppm array
 		stepsperhz=1/(step*freqsig)
-		print 'stepsperhz',stepsperhz
+		print('stepsperhz',stepsperhz)
 		ppm2=n.array([])
 		current=s
 		for i in range(dp):
@@ -147,20 +149,20 @@ for jikn in filenames:
 			Onewindow_length=3
 		if Onewindow_length % 2 == 0:
 			Onewindow_length+=1
-		print 'Onewindow_length',Onewindow_length ## this is the SMOOTHING WINDOW LENGTH for Raw data for display purposes
+		print('Onewindow_length',Onewindow_length) ## this is the SMOOTHING WINDOW LENGTH for Raw data for display purposes
 		Twowindow_length=Onewindow_length ## this is the Smoothing widow length for the residual for fit purposes
 		
-		limit=len(Raw2)/30 ## this is how far from the left on x axis the noise will be calculated to for estimating noise standard deviation
+		limit=int(len(Raw2)/30) ## this is how far from the left on x axis the noise will be calculated to for estimating noise standard deviation
 		Rawsmooth2=sig.savgol_filter(Raw2, Onewindow_length, 2, mode='mirror')
-		print 'Rawsmooth2',Rawsmooth2
-		print 'Rawsmooth2 2:25',Rawsmooth2[2:25]
+		print('Rawsmooth2',Rawsmooth2)
+		print('Rawsmooth2 2:25',Rawsmooth2[2:25])
 		noisey=Rawsmooth2[3:limit]
 		#print 'noisy',noisey
 		noiseyright=Rawsmooth2[::-1]
 		noiseyright=noiseyright[3:limit]
 		baseco=n.concatenate((noisey,noiseyright))	
 		mean=n.mean(baseco)
-		print 'mean',mean
+		print('mean',mean)
 		
 		if correct_baseline==True:
 			Raw2=Raw2-mean
@@ -168,50 +170,52 @@ for jikn in filenames:
 		if leftright==True:
 			leftindex=find_nearest(ppm2,left)
 			rightindex=find_nearest(ppm2,right)
-			print 'leftindex',leftindex
-			print 'rightindex',rightindex
+			print('leftindex',leftindex)
+			print('rightindex',rightindex)
 			Raw1=Raw2[leftindex:rightindex]
 			ppm=ppm2[leftindex:rightindex]
-			print 'lenRaw1',len(Raw1)
-			print 'lenppm',len(ppm)
+			print('lenRaw1',len(Raw1))
+			print('lenppm',len(ppm))
 		else:
 			Raw1=Raw2
 			ppm=ppm2
+		Raw1 = n.array(Raw1)
+		ppm = n.array(ppm)
 		minc=ppm[-1]
-		print 'minc',minc
+		print('minc',minc)
 		maxc=ppm[0]
-		print 'maxc',maxc
+		print('maxc',maxc)
 		specwidth=n.abs(ppm[-1]-ppm[0])
-		print 'specwidth2',specwidth
-		print 'dp',dp
-		print 'step',step
+		print('specwidth2',specwidth)
+		print('dp',dp)
+		print('step',step)
 		middle=n.amax(ppm)-(specwidth/2)
-		print 'middle', middle
+		print('middle', middle)
 		centcol=middle
 		rangecol=specwidth/10
-		print 'center',centcol,'range',rangecol
+		print('center',centcol,'range',rangecol)
 		if isinstance(mancentcol, float):
 			centcol=mancentcol
 		if isinstance(manrangecol, float):
 			rangecol=manrangecol
 		resolution=step*freqsig
-		print 'resolution',resolution
-		print 'minFWHM',minFWHM
+		print('resolution',resolution)
+		print('minFWHM',minFWHM)
 		ppmlen=len(ppm)
-		print 'ppmlen',ppmlen
-		print 'limit', limit
+		print('ppmlen',ppmlen)
+		print('limit', limit)
 		limit_in_ppm=round((s-(limit*step)),2)
-		print 'limit_in_ppm',limit_in_ppm
+		print('limit_in_ppm',limit_in_ppm)
 		maxindex1=Raw1.argmax() #This finds the point of maximum height in the data and uses this as first guess for center of first peak
-		print 'maxindex', maxindex1
+		print('maxindex', maxindex1)
 		c1=ppm[maxindex1] #center of first peak=point of max height
-		print 'c1 start',c1
+		print('c1 start',c1)
 		phpos=n.abs(n.amax(Raw1)) #guess of height of first peak is height of highest point
 		phneg=n.abs(n.amin(Raw1))
 		listph=[phpos,phneg]
-		print 'phpos,phneg',listph
+		print('phpos,phneg',listph)
 		ph1=max(listph)#guess of height of first peak is height of most extreme y point
-		print 'ph1 start',ph1
+		print('ph1 start',ph1)
 		danh=int(rangecol/step)  ###rangecol is in ppm step is ppm per step sp this is range in steps
 		color_all=sns.color_palette("husl", danh)
 		if colorblind==True:
@@ -222,30 +226,31 @@ for jikn in filenames:
 		
 		sigtonoise=(ph1/rms)
 		mcperturb=int(mcperturb/sigtonoise)
-		print 'signtonoise',sigtonoise
+		print('signtonoise',sigtonoise)
 		if sigtonoise<65:
 			lowsignoise=True
 		if OR==True:
 			lowsignoise=lowsignoiseOR
 			split_peak=split_peakOR
 			fit_with_smooth=fit_with_smoothOR
-		print 'rms',rms
+		print('rms',rms)
 		integratearray=n.sum(Raw1*step)
 		pw=integratearray/(ph1*n.pi) #guess of width of first peak is based on total area of signal and highest peak
-		print 'pw',pw
+		print('pw',pw)
 		endvalue=(ph1*0.6)*((pw/2)**2/((pw/2)**2+(n.abs(s-e)/2)**2)) ##this gives the y value of a single peak of height ph1 with pw width at the edge of the spectrum
-		print 'endvalue',endvalue
+		print('endvalue',endvalue)
 		noisestd=n.std(noisey2) ## here is the noise standard deviation
 		if correct_baseline==True:
 			Raw1=Raw1+endvalue ## add back what should be added for an estimated peak values at edge of spectra
 		Rawsmooth=sig.savgol_filter(Raw1, Onewindow_length, 2, mode='mirror')
 		hcw_names=['height1','center1','width1','phase1','height2','center2','width2','phase2','height3','center3','width3','phase3','height4','center4','width4','phase4','height5','center5','width5','phase5','height6','center6','width6','phase6','height7','center7','width7','phase7','height8','center8','width8','phase8','height9','center9','width9','phase9','height10','center10','width10','phase10','height11','center11','width11','phase11','height12','center12','width12','phase12','height13','center13','width13','phase13','height14','center14','width14','height15','center15','width15','height16','center16','width16','height17','center17','width17','height18','center18','width18','height19','center19','width19','height20','center20','width20','height21','center21','width21','height22','center22','width22','height23','center23','width23','height24','center24','width24']
+		hcw_names = n.array(hcw_names)
 		################################################################################################
 		#################here are the functions#########################################################
 		################################################################################################
 		def avoidbounds(temp): ##this makes sure the parameters that are input are not = to or greater than the bounds because if they are equal weirdness ensues
 			mrbubbs=0
-			for item in range(len(temp)/4):
+			for item in range(int(len(temp)/4)):
 				if temp[mrbubbs]<=0.0:
 					temp[mrbubbs]=phmax/1000
 				if temp[mrbubbs]>=phmax:
@@ -266,7 +271,7 @@ for jikn in filenames:
 			return temp
 		def lorentzDK(params, ppm, Raw1,hcw_names):##this function works with the curve_fit function to turn curve_fit guesses for peak height center widths into an array of height values that is the model based on the HCW values.
 					dlen=len(params)
-					dstep=dlen/4
+					dstep=int(dlen/4)
 					c=0
 					d2=0
 					for i in range(0,dstep):
@@ -286,41 +291,42 @@ for jikn in filenames:
 			except RuntimeError:
 				try:
 					clen=len(params)
-					print 'length of failed parameters'
-					print 'params',params
+					print('length of failed parameters')
+					print('params',params)
 					params[hcw_names[clen-3]].value=params[hcw_names[clen-3]].value+(random.uniform(-0.2,0.2)) ##this takes the last center try and changes it a small random amount to be used in the next attempt
 					params[hcw_names[clen-2]].value=params[hcw_names[clen-2]]/(random.uniform(5,20)) ##this takes the last width and decreases the width by dividing by 5 to 20 for next try
 					result=lm.minimize(lorentzDK, params, args=(ppm,Raw1,hcw_names)) 
-					print '####################runtimeerror'
+					print('####################runtimeerror')
 					return result
 					
 				except RuntimeError:
 					try:
 						params[hcw_names[clen-2]].value=pw*(random.uniform(2,5)) ## this is the third try and increases the width beyond the original attempt
 						result=lm.minimize(lorentzDK, params, args=(ppm,Raw1,hcw_names)) 
-						print '##############################runtimerror'
+						print('##############################runtimerror')
 						return result
 					except RuntimeError:
-						print 'did not converge'
+						print('did not converge')
 						pass
 					except:
-						print 'did not fit for some random reason try3 '
+						print('did not fit for some random reason try3 ')
 						why=' did not fit b/c? try3'
 						pass
 					
 				except:
-					print 'did not fit for some random reason try2 '
+					print('did not fit for some random reason try2 ')
 					why=' did not fit b/c? try2'
 					pass
 					
-			except:
-				print 'did not fit for some random reason try1 '
+			except Exception as  e:
+				traceback.print_tb(e.__traceback__)
+				print('did not fit for some random reason try1 ')
 				why=' did not fit b/c?'
 		
 		def extract_ind_peaks(something2): ##this function makes a dictionary of arrays of the y values of individual fitted peaks (the composite peaks)
 			dlen=len(something2)
 			ind_peaks={}
-			dstep=(dlen)/4
+			dstep=int((dlen)/4)
 			c=0
 			for i in range(0,dstep):
 				ind_peaks[i]=something2[c]*(m.cos(something2[c+3])*(something2[c+2]**2/(something2[c+2]**2+(ppm-something2[c+1])**2))-m.sin(something2[c+3])*(-something2[c+2]*(ppm-something2[c+1]))/(something2[c+2]**2+(ppm-something2[c+1])**2))
@@ -330,7 +336,7 @@ for jikn in filenames:
 		def extract_ind_peaks_b(something2): ##this function makes a list of arrays of the y values of individual fitted peaks (the composite peaks)
 			dlen=len(something2)
 			ind_peaks=[]
-			dstep=(dlen)/4
+			dstep=int((dlen)/4)
 			c=0
 			for i in range(0,dstep):
 				ind_peaks.append(something2[c]*(m.cos(something2[c+3])*(something2[c+2]**2/(something2[c+2]**2+(ppm-something2[c+1])**2))-m.sin(something2[c+3])*(-something2[c+2]*(ppm-something2[c+1]))/(something2[c+2]**2+(ppm-something2[c+1])**2)))
@@ -339,7 +345,7 @@ for jikn in filenames:
 			
 		def lorentzDKp(ppm, dataArray): ##this is basically the same as lorentzDK it just can handle a dictionary of arrays input instead of a dictionary of lists which lorentzDK uses
 					dlen=len(dataArray)
-					dstep=dlen/4
+					dstep=int(dlen/4)
 					#print 'dstep p',dstep
 					c=0
 					d2=0
@@ -358,7 +364,7 @@ for jikn in filenames:
 					he=[]
 					pha=[]
 					dlen=len(dataArray)
-					dstep=(dlen)/4
+					dstep=int((dlen)/4)
 					#print 'dstep',dstep
 					c=0
 					for i in range(0,dstep):
@@ -376,7 +382,7 @@ for jikn in filenames:
 		
 		def remove_peaks(dataArray): ## this removes each individual peak from a dictionary of arrays 
 					dlen=len(dataArray)
-					dstep=dlen/4
+					dstep=int(dlen/4)
 					c=dlen-1
 					sub_a_peak={}
 					for i in range(0,dstep):
@@ -388,14 +394,14 @@ for jikn in filenames:
 		def add_peaks(dataArray): ## this adds a peak to an hcw list 
 					dlen=len(dataArray)
 					dataArray=n.asarray(dataArray)
-					dstep=dlen/4
+					dstep=int(dlen/4)
 					c=0
 					add_a_peak=[]
 					for i in range(0,dstep):
 						# if dataArray[c+2]<0.01: ##don't split really thin peaks
-# 							add_a_peak[i]=dataArray
-# 							c=c+4
-# 							continue
+#	 						add_a_peak[i]=dataArray
+#	 						c=c+4
+#	 						continue
 						#else:
 						#print 'dataArray[c]',dataArray[c]
 						split_h=0.7*dataArray[c]
@@ -414,7 +420,7 @@ for jikn in filenames:
 					return add_a_peak
 		def split_widest_peak(dataArray): ## this adds a peak to an hcw list 
 					dlen=len(dataArray)
-					dstep=dlen/4
+					dstep=int(dlen/4)
 					c=0
 					b=0
 					#print'dataArray',dataArray
@@ -437,11 +443,11 @@ for jikn in filenames:
 						split_c_2=(dataArray[b-1])-((dataArray[b])/4)
 						split_w=0.7*dataArray[b]
 						split_p=0
-						print dataArray
+						print(dataArray)
 						add_a_peak[0]=n.delete(dataArray,[b-2,b-1,b,b+1])
-						print add_a_peak[0]
+						print(add_a_peak[0])
 						add_a_peak[0]=n.insert(add_a_peak[0],[b-2,b-2,b-2,b-2,b-2,b-2,b-2,b-2],[split_h,split_c_1,split_w,split_p,split_h,split_c_2,split_w,split_p])
-						print add_a_peak[0]
+						print(add_a_peak[0])
 					return add_a_peak
 			
 		def extract_val(params):
@@ -449,7 +455,7 @@ for jikn in filenames:
 			standard_err=[]
 			c=0
 			lenpa=len(params)
-			for i in range (lenpa/4):
+			for i in range (int(lenpa/4)):
 				hcw.append(params[hcw_names[c]].value)
 				hcw.append(params[hcw_names[c+1]].value)
 				hcw.append(params[hcw_names[c+2]].value)
@@ -484,9 +490,9 @@ for jikn in filenames:
 		stder=[]
 		STDER=[]
 		#### creating the paramter file for use in the fitting routine##########
-		print "c1",c1
-		print 'minc',minc
-		print 'maxc',maxc
+		print("c1",c1)
+		print('minc',minc)
+		print('maxc',maxc)
 		params=lm.Parameters()
 		params.add('height1', value=ph1, min=0.0, max=phmax)
 		params.add('width1', value=pw, min=minFWHM, max=maxFWHM)
@@ -497,7 +503,7 @@ for jikn in filenames:
 		fittedpeaks=0
 		for number in range(peaks_to_fit):
 			currentnum=k
-			print 'Attempting to fit %.f peaks'%(number+1)
+			print('Attempting to fit %.f peaks'%(number+1))
 			result=fit(params) ##this is the fitting routine see def
 			pen=currentnum+1-(currentnum/4)
 			#print 'pen',pen
@@ -505,15 +511,15 @@ for jikn in filenames:
 				kphi=maxph/m.pi
 				pen=pen+((currentnum/4)*kphi)
 				#print 'pen+kphi',pen
-			fitted=extract_val(params)  ##see def
+			fitted=extract_val(result.params)  ##see def
 			
 				
 			poptn[number]=fitted[0]
 			#print 'fitted[0]',fitted[0]
 			stder.append(fitted[1])
-			print 'stder', stder[number]
+			print('stder', stder[number])
 			if result.success==False:
-				print 'NOTE up: fit only up to %.f peaks'%number
+				print('NOTE up: fit only up to %.f peaks'%number)
 				break
 			if result.success==True:
 				fittedpeaks+=1
@@ -563,28 +569,28 @@ for jikn in filenames:
 				evenodd+=1
 				k+=4
 			except:
-				print 'NOTE: fit only up to %.f peaks'%number
+				print('NOTE: fit only up to %.f peaks'%number)
 				break
 		
 		
 		BestBICindex=min(BIC, key=BIC.get)
-		print 'BIC',BIC
-		print 'BestBICindex',BestBICindex
+		print('BIC',BIC)
+		print('BestBICindex',BestBICindex)
 		best_fitindex=BestBICindex
 		BestAICcindex=min(AICc, key=AICc.get)
 		BestBICvalue=BIC[BestBICindex]
 		BestAICcvalue=AICc[BestAICcindex]
-		BICarray=n.asarray(BIC.values())
+		BICarray=n.asarray(list(BIC.values()))
 		diffBICarray=n.diff(BICarray)
-		print 'diffBICarray',diffBICarray
+		print('diffBICarray',diffBICarray)
 		the_index=n.where(diffBICarray<2)
 		
 		if the_index[0].size:
 			use_this_fit_index=n.max(the_index[0])+1
-			print 'use this fit',use_this_fit_index
+			print('use this fit',use_this_fit_index)
 		if min_or_not==0 and the_index[0].size:
 			best_fitindex=use_this_fit_index
-			print 'best_fitindex1',best_fitindex
+			print('best_fitindex1',best_fitindex)
 		#print 'the index', the_index
 		statsame=([])
 		c34=0
@@ -592,10 +598,10 @@ for jikn in filenames:
 			if item <=BestBICvalue+Plimit:
 				statsame=n.append(statsame,c34)
 			c34+=1
-		print 'statsame',statsame			
-		AICcarray=n.asarray(AICc.values())
+		print('statsame',statsame)			
+		AICcarray=n.asarray(list(AICc.values()))
 		STDER=stder[best_fitindex]
-		print 'firstSTDER',STDER
+		print('firstSTDER',STDER)
 		bestHCWs=poptn[best_fitindex]
 		#print 'bestHCWsfirst',bestHCWs
 		number_of_peaks_start=best_fitindex+1
@@ -606,7 +612,7 @@ for jikn in filenames:
 		if A_or_B=='AICc':
 			bestC=AICc[best_fitindex]	
 		number_of_peaks_in_best_fit=best_fitindex+1
-		print 'starting with %.f peaks'%number_of_peaks_in_best_fit
+		print('starting with %.f peaks'%number_of_peaks_in_best_fit)
 		hcw=lorentzDKz(bestHCWs)
 		#############################################################################################################################################################
 		##this next part gets rid of peaks that do not significantly add to the quality of fit as judged by BIC with the BIC limit set at start above same as limit for above code.
@@ -625,7 +631,7 @@ for jikn in filenames:
 		
 		###This next bit of code takes the fit with the lowest BIC value from the original fit and deletes peaks that don't significantly add to the fit.###This fitting routine is conservative as peaks must add more value than Plimit in order to be kept.
 		if number_of_peaks_in_best_fit>0:
-			print'now refitting and deleting peaks that do not signficantly contribute to fit. Process=1)delete peak 2)if new BIC is less than old BIC then peak needs to be deleted'
+			print('now refitting and deleting peaks that do not signficantly contribute to fit. Process=1)delete peak 2)if new BIC is less than old BIC then peak needs to be deleted')
 			Crefits=n.ones(40)*1E10
 			overall[set]['stanerror'][0]=STDER
 			overall[set]['peaks_refit'][0]=bestpeak
@@ -636,7 +642,7 @@ for jikn in filenames:
 			one_less_peak[0]=bestHCWs
 			k=len(one_less_peak[0])
 			#print'lenonelesspeak',k
-			Crefits[(k/4)-1]=bestC
+			Crefits[int((k/4)-1)]=bestC
 			#print'Crefits before',Crefits
 			while C_compare<Plimit: 
 				C_com=1
@@ -659,22 +665,22 @@ for jikn in filenames:
 					#print 'onelesspeak[cart]before',one_less_peak[cart]
 					one_less_peak[cart]=avoidbounds(one_less_peak[cart])
 					#print 'onelesspeak[cart]after',one_less_peak[cart]
-					for i in range(k/4):
+					for i in range(int(k/4)):
 						params.add(hcw_names[c], value=one_less_peak[cart][c], min=0.0, max=phmax)
 						params.add(hcw_names[c+1], value=one_less_peak[cart][c+1], min=minc, max=maxc)
 						params.add(hcw_names[c+2], value=one_less_peak[cart][c+2], min=minFWHM, max=maxFWHM)
 						params.add(hcw_names[c+3], value=one_less_peak[cart][c+3], min=minph, max=maxph, vary=varyphi)
 						c+=4
-					print 'before fit %.i'%cart
+					print('before fit %.i'%cart)
 					result2=fit(params)
-					print 'after fit  %.i'%cart
-					fitted_temp=extract_val(params)
+					print('after fit  %.i'%cart)
+					fitted_temp=extract_val(result2.params)
 					poptv[cart]=fitted_temp[0]
 					stanerr[cart]=fitted_temp[1]
-					print 'cart',cart
-					print 'standard error',fitted_temp[1]
+					print('cart',cart)
+					print('standard error',fitted_temp[1])
 					if poptv[cart]==None:
-						print 'somecart went wrong on refit # %.f'%cart
+						print('somecart went wrong on refit # %.f'%cart)
 						break
 					try:
 						poptz=poptv[cart]
@@ -686,27 +692,27 @@ for jikn in filenames:
 						overall[set]['AICc_refit'][cart]=(2*pen)-twolnL_refit+((2*pen*(pen+1))/(ppmlen-pen-1))
 						if exhaust == False:
 							compare=overall[set]['BIC_refit'][cart]-bestC
-							print 'Compare BIC inside',compare
+							print('Compare BIC inside',compare)
 							if compare<-5:
 								C_com=compare						
 					except:
-						print 'something went wrong lower on refit # %.f'%cart
+						print('something went wrong lower on refit # %.f'%cart)
 						break
-				overall[set]['BIC_refit_array']=n.asarray(overall[set]['BIC_refit'].values())
-				overall[set]['AICc_refit_array']=n.asarray(overall[set]['AICc_refit'].values())
+				overall[set]['BIC_refit_array']=n.asarray(list(overall[set]['BIC_refit'].values()))
+				overall[set]['AICc_refit_array']=n.asarray(list(overall[set]['AICc_refit'].values()))
 				if A_or_B=='BIC':
 					best_refit_index3.append(n.argmin(overall[set]['BIC_refit_array']))##here are the indexes (cart) of the lowest BIC value fit for each set
 				if A_or_B=='AICc':
 					best_refit_index3.append(n.argmin(overall[set]['AICc_refit_array']))
 				if A_or_B=='BIC':
-					Crefits[(k/4)-1]=n.amin(overall[set]['BIC_refit_array'])	####the (k/4)-1 in the Crefits dictionary? key is so that the BIC value gets associated with 0 for 1 peak and 8 for 9 peaks etc.
+					Crefits[int((k/4)-1)]=n.amin(overall[set]['BIC_refit_array'])	####the (k/4)-1 in the Crefits dictionary? key is so that the BIC value gets associated with 0 for 1 peak and 8 for 9 peaks etc.
 					C_compare=n.amin(overall[set]['BIC_refit_array'])-bestC ####if this is less than zero it means it is a nominal improvement if it is less than Plimit then it is a "significant" improvemtn
 					if set>0:
-						print 'C_compare',C_compare
-						print 'best standard error %i'%(k/4)
-						print overall[set]['stanerror'][best_refit_index3[set]]
+						print('C_compare',C_compare)
+						print('best standard error %i'%(k/4))
+						print(overall[set]['stanerror'][best_refit_index3[set]])
 						if C_compare<Plimit:
-							print '%.f peaks deleted'%set
+							print('%.f peaks deleted'%set)
 						if C_compare<0:
 							bestC=n.amin(overall[set]['BIC_refit_array'])
 							if k==0:
@@ -716,10 +722,10 @@ for jikn in filenames:
 					Crefits[(k/4)-1]=n.amin(overall[set]['AICc_refit_array'])
 					C_compare=n.amin(overall[set]['AICc_refit_array'])-bestC
 					if set>0:
-						print 'C_compare',C_compare
+						print('C_compare',C_compare)
 						if C_compare<0:
 							bestC=n.amin(overall[set]['BIC_refit_array'])
-							print '%.f peaks deleted'%set
+							print('%.f peaks deleted'%set)
 							if k==0:
 								sys.exit('No significant peaks found')
 					
@@ -730,11 +736,11 @@ for jikn in filenames:
 					refitmin_val=n.amin(Crefits)
 					refitmin_index=n.argmin(Crefits)#this is the index of the best refit by BIC
 					compare=Crefits-refitmin_val #take the array of the refit BIC values and subract the best BIC value
-					print 'comparison after delete',compare
+					print('comparison after delete',compare)
 					for i in range (fittedpeaks):  ## pick out the indices of the fits that are statistically the same as best fit (less than Plimit away)
 						if compare[i] <=Plimit: ###right here we are getting all the indices within Plimit of each other.
 							yuio=n.append(yuio,int(i))
-					print 'fits that are less than Plimit different from best fit',yuio
+					print('fits that are less than Plimit different from best fit',yuio)
 					split_index=refitmin_index#n.amin(yuio) ###picking out the split fit index within Plimit that has the least number of peaks
 					bestset=best_fitindex-split_index ###best_fitindex is the index of the starting number of peaks with the best BIC from the initial fit before deleting any
 					splitset=best_fitindex-split_index
@@ -752,17 +758,17 @@ for jikn in filenames:
 					gh=split_index
 					bestHCWs=overall[bestset]['hcwarray_refit'][best_refit_index]
 					STDER=overall[bestset]['stanerror'][best_refit_index]
-					print 'bestCfinalyuio',bestC
+					print('bestCfinalyuio',bestC)
 					number_of_peaks_in_best_fit=gh+1
 					best_fitindex=refitmin_index
 					hcw=lorentzDKz(bestHCWs)##this is the shortened version
 					if A_or_B=='AICc':
 						bestC=best_AICc_refit
 					peaksdelete=bestset	
-					print 'Best fit is with %.f unecessary peak(s) deleted'%peaksdelete
-					print 'The Best fit has %.f peaks'%number_of_peaks_in_best_fit
+					print('Best fit is with %.f unecessary peak(s) deleted'%peaksdelete)
+					print('The Best fit has %.f peaks'%number_of_peaks_in_best_fit)
 				elif set==1:
-					print 'Did not delete any peaks, best unsplit fit is with %.f peaks'%number_of_peaks_in_best_fit		
+					print('Did not delete any peaks, best unsplit fit is with %.f peaks'%number_of_peaks_in_best_fit)		
 		mc_hcw_list=[] ##good
 		mc_BIC_list=[] ##good
 		split_hcw_list=[] ##good
@@ -782,9 +788,9 @@ for jikn in filenames:
 			BICdel.append(overall[item]['BIC_refit'][best_refit_index3[item]])
 			HCWdel.append(overall[item]['hcwarray_refit'][best_refit_index3[item]])	
 			serr.append(overall[item]['stanerror'][best_refit_index3[item]])	
-		print 'HCWdel',HCWdel
+		print('HCWdel',HCWdel)
 		#print 'BICdel',BICdel
-		print 'serr',serr
+		print('serr',serr)
 		########################################################################################################################################################
 		#####this definition (split_peaks), takes the best fit from above and trys to split each individual peak and refit and get a better fit by BIC##########
 		########################################################################################################################################################
@@ -799,7 +805,7 @@ for jikn in filenames:
 			#print 'onemorepeak',one_more_peak
 			set=-1
 			k=0
-			print 'now splitting each peak and if the new BIC+Plimit< unsplit BIC then the peak is kept and try to split more'
+			print('now splitting each peak and if the new BIC+Plimit< unsplit BIC then the peak is kept and try to split more')
 			while next==True and k<((maxsplit)*4):
 				set=set+1
 				next=False
@@ -827,7 +833,7 @@ for jikn in filenames:
 					#print 'onemorepeak thing before',thing
 					thing=avoidbounds(thing)
 					#print 'onemorepeak thing after',thing
-					for i in range(k/4):
+					for i in range(int(k/4)):
 						#print 'c',c
 						params.add(hcw_names[c], value=thing[c], min=0.0, max=phmax)
 						params.add(hcw_names[c+1], value=thing[c+1], min=minc, max=maxc)
@@ -838,18 +844,18 @@ for jikn in filenames:
 					twolnL=-ppmlen*m.log(result2.chisqr/ppmlen) ###part of BIC/AICc value calculation despite it's name result.chisqr is not chisquare but is instead the sum of the squared residuals.
 					BIC_split=(mod*(pen)*m.log(ppmlen))-twolnL ###the +1 on the k is emperical.
 					BIC_compare_split=BIC_split-BICin
-					print 'BIC_compare_split',BIC_compare_split
-					print 'number of peaks=%.f'%(k/4)
-					fitted_temp3=extract_val(params)
+					print('BIC_compare_split',BIC_compare_split)
+					print('number of peaks=%.f'%(k/4))
+					fitted_temp3=extract_val(result2.params)
 					hcwpnow=fitted_temp3[0]
 					hcwpsplit.append(hcwpnow)
 					tempBIClist.append(BIC_split)
 					counteri+=1
 					if BIC_compare_split<sirc:
 						split=True
-						fitted_temp=extract_val(params)
+						fitted_temp=extract_val(result2.params)
 						if fitted_temp[0]==None:
-							print 'something went wrong on refit split'
+							print('something went wrong on refit split')
 						else:
 							split_hcw_list.append(fitted_temp[0])
 							split_STDER.append(fitted_temp[1])
@@ -858,7 +864,7 @@ for jikn in filenames:
 						BICin=BIC_split
 						next=True
 						next_peak=fitted_temp[0]
-						print 'Winner!!!!!!!!!!!number of peaks=%.f'%(k/4)	
+						print('Winner!!!!!!!!!!!number of peaks=%.f'%(k/4))	
 						break
 				BIC_compare_split2=min(tempBIClist)-BICin
 				best_refit_index=tempBIClist.index(min(tempBIClist))
@@ -885,9 +891,9 @@ for jikn in filenames:
 				stder56=[]
 				for be in range (16):
 					stder56=stder56+stder[0]+stder[0]
-				print 'standard error used instead for mc because normal is all zeros',stder56
+				print('standard error used instead for mc because normal is all zeros',stder56)
 			for x in range(num_of_mc_peaks):
-				print 'mc peaks tried',x
+				print('mc peaks tried',x)
 				paramsmc=lm.Parameters()
 				counter3=0
 				temptry=[]
@@ -918,7 +924,7 @@ for jikn in filenames:
 					
 					
 				pn=len(temptry)
-				for i in range(pn/4):
+				for i in range(int(pn/4)):
 						#print 'c',c
 						paramsmc.add(hcw_names[c], value=temptry[c], min=0.0, max=phmax)
 						paramsmc.add(hcw_names[c+1], value=temptry[c+1], min=minc, max=maxc)
@@ -930,20 +936,20 @@ for jikn in filenames:
 				mctwolnL=-ppmlen*m.log(result3.chisqr/ppmlen) ###part of BIC/AICc value calculation despite it's name result.chisqr is not chisquare but is instead the sum of the squared residuals.
 				mcBIC=(mod*(pen)*m.log(ppmlen))-mctwolnL
 				comp2=mcBIC-bestC
-				print 'mcBIC-bestC',comp2
+				print('mcBIC-bestC',comp2)
 				if comp2<Plimit:
 					trigger=True
 					counter54+=1
-					print 'Number of succesful monte carlo peak sets=%.f'%counter54
+					print('Number of succesful monte carlo peak sets=%.f'%counter54)
 					successmcpeaks=counter54
 					#print 'mcBIC=%.f'%mcBIC
-					fitted_temp2=extract_val(paramsmc)
+					fitted_temp2=extract_val(result3.params)
 					popte=fitted_temp2[0]
 					#print 'fitted hcw',popte
 					mc_hcw_list.append(popte)
 					mc_BIC_list.append(mcBIC)
 					hcwp.append(popte)
-					print 'added to hcwp'
+					print('added to hcwp')
 					bic.append(mcBIC)
 					if comp2<2:
 						mchcw_best.append(popte)
@@ -961,7 +967,7 @@ for jikn in filenames:
 					splitpeakp=[]
 					c=0
 					len24=((len(row))/4)#this is the number of peaks in the set
-					for i in range(len24):
+					for i in range(int(len24)):
 						splitpeakh.append(row[c])
 						splitpeakc.append(row[c+1])
 						splitpeakw.append(row[c+2]*freqsig*2)
@@ -977,7 +983,7 @@ for jikn in filenames:
 				splitpeakp=[]
 				c=0
 				len24=((len(lister))/4)#this is the number of peaks in the set
-				for i in range(len24):
+				for i in range(int(len24)):
 					splitpeakh.append(lister[c])
 					splitpeakc.append(lister[c+1])
 					splitpeakw.append(lister[c+2]*freqsig*2)
@@ -1053,10 +1059,10 @@ for jikn in filenames:
 			if set==0:
 				splithcw=bestHCWs
 				splitBIC=BestBICvalue
-			print 'splithcw',splithcw
-			print 'splitBIC',splitBIC
+			print('splithcw',splithcw)
+			print('splitBIC',splitBIC)
 			worked=split_peaks(splithcw,splitBIC)
-			print 'worked[0]',worked[0]
+			print('worked[0]',worked[0])
 			if worked[0]==True:###the stuff above is legit but the stuff in this line and below may not be necessary
 				split_minBIC=min(split_BIC_list)
 				split_minBIC_index=split_BIC_list.index(split_minBIC)
@@ -1073,7 +1079,7 @@ for jikn in filenames:
 				if minsplitcomp<-0.01:
 					bestC=split_minBIC
 					usesplit=True
-				print 'bestC',bestC
+				print('bestC',bestC)
 				#print 'usesplit',usesplit
 		hcwp=[]
 		bic=[]
@@ -1096,11 +1102,11 @@ for jikn in filenames:
 			#print 'bestHCWs',bestHCWs
 			#print 'STDER',STDER
 			STDER=sterr[indexminc]
-			print 'split_STDER usedin mc',STDER
+			print('split_STDER usedin mc',STDER)
 			inputsplit=hcwp[indexminc]
 			#print 'inputsplit',inputsplit
 			monte_carlo=montecarlo(inputsplit)
-			print 'monte carlo ran!!!!!!!'
+			print('monte carlo ran!!!!!!!')
 			#print 'monte_carlo',monte_carlo
 			
 				
@@ -1112,96 +1118,96 @@ for jikn in filenames:
 					mc_peaks.append(lorentzDKp(ppm,item))
 				minBIC=min(mc_BIC_list)
 				maxBIC=max(mc_BIC_list)
-				print 'minBIC',minBIC
-				print 'maxBIC',maxBIC
+				print('minBIC',minBIC)
+				print('maxBIC',maxBIC)
 				bestmchcwp=separate(monte_carlo[3])
 				bestmcbic=separate(monte_carlo[4])
-				print len(bestmchcwp)
+				print(len(bestmchcwp))
 				#print 'bestmchcwp',bestmchcwp
 				# if monte_carlo[2]>0:
-# 					jhnm=len(bestmchcwp[0])#number of peaks in fit
-# 					
-# 					bestmchcwph=[]
-# 					bestmchcwpc=[]
-# 					bestmchcwpw=[]
-# 					bestmchcwpp=[]
-# 					c=0
-# 					for i in range(len(bestmchcwp)/4):
-# 						for item in bestmchcwp[c]:
-# 							bestmchcwph.append(item)
-# 						for item in bestmchcwp[c+1]:
-# 							bestmchcwpc.append(item)
-# 						for item in bestmchcwp[c+2]:
-# 							bestmchcwpw.append(item)
-# 						for item in bestmchcwp[c+3]:
-# 							bestmchcwpp.append(item)
-# 						c+=4
-# 					#print 'bestmchcwph',bestmchcwph
-# 					#print 'bestmchcwpc',bestmchcwpc
-# 					totalfits=len(bestmchcwpc)
-# 					if monte_carlo[2]>1:
-# 						bestmchcwpc, bestmchcwph, bestmchcwpw, bestmchcwpp = zip(*sorted(zip(bestmchcwpc,bestmchcwph,bestmchcwpw,bestmchcwpp)))#sort the data by the centers
-# 					noepp=monte_carlo[2] #number of entries per peak
-# 					print 'noepp',noepp
-# 					mch=[]
-# 					mcc=[]
-# 					mcw=[]
-# 					mcp=[]
-# 					cghi=0
-# 					for i in range(jhnm):
-# 						start=noepp*cghi
-# 						end=noepp*(cghi+1)
-# 						mch.append(bestmchcwph[start:end])
-# 						mcc.append(bestmchcwpc[start:end])
-# 						mcw.append(bestmchcwpw[start:end])
-# 						mcp.append(bestmchcwpp[start:end])
-# 						cghi+=1
-# 					#print 'mch',mch
-# 					#print 'mcc',mcc
-# 					#print 'mcw',mcw
-# 					#print 'mcp',mcp
-# 					mch=n.asarray(mch)
-# 					mcc=n.asarray(mcc)
-# 					mcw=n.asarray(mcw)
-# 					mcp=n.asarray(mcp)
-# 					mcwmed=[]
-# 					for i in range(len(mcw)):
-# 						mcwmed.append(n.median(mcw[i]))
-# 					#print 'mcwmed',mcwmed
-# 					# for j in range(len(mch)/noepp):
-# 	# 					for i in range(len(mch[j])):
-# 	# 						soyu=mcw[j][i]
-# 	# 						if soyu>2*mcwmed:
-# 	# 							mch=n.delete(mch,j,[i])
-# 	# 							mcc=n.delete(mcc,j,[i])
-# 	# 							mcw=n.delete(mcw,j,[i])
-# 	# 							mcp=n.delete(mcp,j,[i])
-# 	# 						elif soyu<0.5*mcwmed:
-# 	# 							mch=n.delete(mch,j,[i])
-# 	# 							mcc=n.delete(mcc,j,[i])
-# 	# 							mcw=n.delete(mcw,j,[i])
-# 	# 							mcp=n.delete(mcp,j,[i])
-# 					mchmed=[]
-# 					mccmed=[]
-# 					mcwmed=[]
-# 					mcpmed=[]
-# 					mchstd=[]
-# 					mccstd=[]
-# 					mcwstd=[]
-# 					mcpstd=[]
-# 					huty=len(mch)
-# 					for i in range(huty):
-# 						mchmed.append(n.median(mch[i]))
-# 						mchstd.append(n.std(mch[i]))
-# 					for i in range(huty):
-# 						mccmed.append(n.median(mcc[i]))
-# 						mccstd.append(n.std(mcc[i]))
-# 					for i in range(huty):
-# 						mcwmed.append(n.median(mcw[i]))
-# 						mcwstd.append(n.std(mcw[i]))
-# 					for i in range(huty):
-# 						mcpmed.append(n.median(mcp[i]))
-# 						mcpstd.append(n.std(mcp[i]))
+#	 				jhnm=len(bestmchcwp[0])#number of peaks in fit
+#	 				
+#	 				bestmchcwph=[]
+#	 				bestmchcwpc=[]
+#	 				bestmchcwpw=[]
+#	 				bestmchcwpp=[]
+#	 				c=0
+#	 				for i in range(len(bestmchcwp)/4):
+#	 					for item in bestmchcwp[c]:
+#	 						bestmchcwph.append(item)
+#	 					for item in bestmchcwp[c+1]:
+#	 						bestmchcwpc.append(item)
+#	 					for item in bestmchcwp[c+2]:
+#	 						bestmchcwpw.append(item)
+#	 					for item in bestmchcwp[c+3]:
+#	 						bestmchcwpp.append(item)
+#	 					c+=4
+#	 				#print 'bestmchcwph',bestmchcwph
+#	 				#print 'bestmchcwpc',bestmchcwpc
+#	 				totalfits=len(bestmchcwpc)
+#	 				if monte_carlo[2]>1:
+#	 					bestmchcwpc, bestmchcwph, bestmchcwpw, bestmchcwpp = zip(*sorted(zip(bestmchcwpc,bestmchcwph,bestmchcwpw,bestmchcwpp)))#sort the data by the centers
+#	 				noepp=monte_carlo[2] #number of entries per peak
+#	 				print 'noepp',noepp
+#	 				mch=[]
+#	 				mcc=[]
+#	 				mcw=[]
+#	 				mcp=[]
+#	 				cghi=0
+#	 				for i in range(jhnm):
+#	 					start=noepp*cghi
+#	 					end=noepp*(cghi+1)
+#	 					mch.append(bestmchcwph[start:end])
+#	 					mcc.append(bestmchcwpc[start:end])
+#	 					mcw.append(bestmchcwpw[start:end])
+#	 					mcp.append(bestmchcwpp[start:end])
+#	 					cghi+=1
+#	 				#print 'mch',mch
+#	 				#print 'mcc',mcc
+#	 				#print 'mcw',mcw
+#	 				#print 'mcp',mcp
+#	 				mch=n.asarray(mch)
+#	 				mcc=n.asarray(mcc)
+#	 				mcw=n.asarray(mcw)
+#	 				mcp=n.asarray(mcp)
+#	 				mcwmed=[]
+#	 				for i in range(len(mcw)):
+#	 					mcwmed.append(n.median(mcw[i]))
+#	 				#print 'mcwmed',mcwmed
+#	 				# for j in range(len(mch)/noepp):
+#	 # 					for i in range(len(mch[j])):
+#	 # 						soyu=mcw[j][i]
+#	 # 						if soyu>2*mcwmed:
+#	 # 							mch=n.delete(mch,j,[i])
+#	 # 							mcc=n.delete(mcc,j,[i])
+#	 # 							mcw=n.delete(mcw,j,[i])
+#	 # 							mcp=n.delete(mcp,j,[i])
+#	 # 						elif soyu<0.5*mcwmed:
+#	 # 							mch=n.delete(mch,j,[i])
+#	 # 							mcc=n.delete(mcc,j,[i])
+#	 # 							mcw=n.delete(mcw,j,[i])
+#	 # 							mcp=n.delete(mcp,j,[i])
+#	 				mchmed=[]
+#	 				mccmed=[]
+#	 				mcwmed=[]
+#	 				mcpmed=[]
+#	 				mchstd=[]
+#	 				mccstd=[]
+#	 				mcwstd=[]
+#	 				mcpstd=[]
+#	 				huty=len(mch)
+#	 				for i in range(huty):
+#	 					mchmed.append(n.median(mch[i]))
+#	 					mchstd.append(n.std(mch[i]))
+#	 				for i in range(huty):
+#	 					mccmed.append(n.median(mcc[i]))
+#	 					mccstd.append(n.std(mcc[i]))
+#	 				for i in range(huty):
+#	 					mcwmed.append(n.median(mcw[i]))
+#	 					mcwstd.append(n.std(mcw[i]))
+#	 				for i in range(huty):
+#	 					mcpmed.append(n.median(mcp[i]))
+#	 					mcpstd.append(n.std(mcp[i]))
 					#print 'mchmed',mchmed
 					#print 'mchstd',mchstd
 					#print 'mch',mch
@@ -1223,7 +1229,7 @@ for jikn in filenames:
 					if mcdif<-2:
 						vluw=-mcdif+0.5
 						cal_mc_BIC_list.append(vluw)
-						print 'sig improved BIC by mc',mcdif
+						print('sig improved BIC by mc',mcdif)
 						improved=True
 					elif -2<=mcdif<2:
 						cal_mc_BIC_list.append(2.5)
@@ -1241,7 +1247,7 @@ for jikn in filenames:
 				mcpeakp=[]
 				for row in mc_hcw_list:
 					c=0
-					len24=((len(row))/4)#this is the number of peaks in the set
+					len24=int((len(row))/4)#this is the number of peaks in the set
 					for i in range(len24):
 						mcpeakh.append(row[c])
 						mcpeakc.append(row[c+1])
@@ -1249,20 +1255,20 @@ for jikn in filenames:
 						mcpeakp.append(row[c+3])
 						c+=4
 				# couytu=-1
-# 				couytu1=-1
-# 				minmcdif1=min(mcdif1)
-# 				for thing in mcdif1:
-# 					couytu+=1
-# 					rzc=minmcdif1-thing
-# 					if rzc>-2 and couytu1==-1:
-# 						hcwp.append(mc_hcw_list[couytu])
-# 						bic.append(mc_BIC_list[couytu])	
-# 						couytu1+=1
+#	 			couytu1=-1
+#	 			minmcdif1=min(mcdif1)
+#	 			for thing in mcdif1:
+#	 				couytu+=1
+#	 				rzc=minmcdif1-thing
+#	 				if rzc>-2 and couytu1==-1:
+#	 					hcwp.append(mc_hcw_list[couytu])
+#	 					bic.append(mc_BIC_list[couytu])	
+#	 					couytu1+=1
 		indexminc=bic.index(min(bic))
 		bestC=bic[indexminc]
 		#print 'hcwp',hcwp
 		if len(bic)>1:
-			bic, hcwp= zip(*sorted(zip(bic,hcwp)))#sort the data by the centers
+			bic, hcwp= list(zip(*sorted(zip(bic,hcwp))))#sort the data by the centers
 		#print 'hcwp',hcwp
 		river=-1
 		kjh1=-1
@@ -1371,44 +1377,44 @@ for jikn in filenames:
 		ppmshort=ppm[40:-40:5] ##########This adjusts the number of colored dots in the spectrum
 		
 		# def colorme(di):
-# 			one=rangecol/6.0
-# 			two=2*one
-# 			three=3*one
-# 			four=4*one
-# 			five=5*one
-# 			six=6*one
-# 			if di<one:
-# 				color_red=1
-# 			if di>=one:
-# 				color_red=1-((di-one)/one)
-# 			if di>=two:
-# 				color_red=0
-# 			if di>=four:
-# 				color_red=(di-four)/one
-# 			if di>=five:
-# 				color_red=1
-# 			if di>=six:
-# 				color_red=1
-# 			if di<two:
-# 				color_green=0
-# 			if di>=two:
-# 				color_green=(di-two)/one
-# 			if di>=three:
-# 				color_green=1
-# 			if di>=five:
-# 				color_green=1-((di-five)/one)
-# 			if di>=six:
-# 				color_green=0
-# 			if di<one:
-# 				color_blue=(di/one)
-# 			if di>=one:
-# 				color_blue=1
-# 			if di>=three:
-# 				color_blue=1-((di-three)/one)
-# 			if di>=four:
-# 				color_blue=0
-# 			color_all=(color_red,color_green,color_blue)
-# 			return color_all
+#	 		one=rangecol/6.0
+#	 		two=2*one
+#	 		three=3*one
+#	 		four=4*one
+#	 		five=5*one
+#	 		six=6*one
+#	 		if di<one:
+#	 			color_red=1
+#	 		if di>=one:
+#	 			color_red=1-((di-one)/one)
+#	 		if di>=two:
+#	 			color_red=0
+#	 		if di>=four:
+#	 			color_red=(di-four)/one
+#	 		if di>=five:
+#	 			color_red=1
+#	 		if di>=six:
+#	 			color_red=1
+#	 		if di<two:
+#	 			color_green=0
+#	 		if di>=two:
+#	 			color_green=(di-two)/one
+#	 		if di>=three:
+#	 			color_green=1
+#	 		if di>=five:
+#	 			color_green=1-((di-five)/one)
+#	 		if di>=six:
+#	 			color_green=0
+#	 		if di<one:
+#	 			color_blue=(di/one)
+#	 		if di>=one:
+#	 			color_blue=1
+#	 		if di>=three:
+#	 			color_blue=1-((di-three)/one)
+#	 		if di>=four:
+#	 			color_blue=0
+#	 		color_all=(color_red,color_green,color_blue)
+#	 		return color_all
 			
 			
 		
@@ -1422,7 +1428,7 @@ for jikn in filenames:
 			river=0
 			#kjh=-1
 			HCWdellen=len(hcwp)
-			print 'HCWdellen %.i'%HCWdellen
+			print('HCWdellen %.i'%HCWdellen)
 			#while annacar<6 and annacar<(HCWdellen-1):
 			for item in range(HCWdellen):
 				#annacar+=1
@@ -1430,7 +1436,7 @@ for jikn in filenames:
 				
 				sorted13=separate(hcwp[item])
 				zadia11=0
-				print 'hcwp[item]',hcwp[item]
+				print('hcwp[item]',hcwp[item])
 				#print 'sorted13',sorted13
 				
 				statsameh=sorted13[zadia11]
@@ -1438,8 +1444,8 @@ for jikn in filenames:
 				numpeak=len(statsamec)
 				statsamew=sorted13[zadia11+2]
 				futurec=statsamec
-				print 'futurec',futurec
-				print 'statsamew',statsamew
+				print('futurec',futurec)
+				print('statsamew',statsamew)
 				statsamep=sorted13[zadia11+3]
 				i=-1
 				statsamehfilt=[]
@@ -1454,17 +1460,17 @@ for jikn in filenames:
 						statsamecfilt.append(statsamec[i])
 						statsamewfilt.append(statsamew[i])
 						statsamepfilt.append(statsamep[i])
-						print 'appendi=',i
+						print('appendi=',i)
 					
-				print 'statsamewfilt',statsamewfilt
+				print('statsamewfilt',statsamewfilt)
 					
 				numgoodpeaks=len(statsamecfilt)
 				
 				statsamec_str=stringize(statsamecfilt)
-				print 'statsame center %i'%item,statsamec
-				print 'statsame width %i'%item, statsamew
-				print 'statsame height %i'%item,statsameh
-				print 'statsame phase %i'%item,statsamep
+				print('statsame center %i'%item,statsamec)
+				print('statsame width %i'%item, statsamew)
+				print('statsame height %i'%item,statsameh)
+				print('statsame phase %i'%item,statsamep)
 				statsamew_str=stringize(statsamewfilt)
 				statsamep_str=stringize(statsamepfilt)
 				BICcompared=bic[river]-bestC
@@ -1509,7 +1515,7 @@ for jikn in filenames:
 					pcAreassstr.append("%.1f" %thing)
 				p.figtext(0.01,0.94,pcAreassstr,size='small')
 				#print 'statsame_ip',statsame_ip
-				print len(statsame_ip)
+				print(len(statsame_ip))
 				#print 'futurec',futurec
 				for nuth in range(len(statsame_ip)):
 						#print nuth
@@ -1562,9 +1568,9 @@ for jikn in filenames:
 		
 		def graphresidual(hcwp,bic):
 			# annacar=-1
- 			river=0
- 			HCWdellen=len(hcwp)
-# 			while annacar<6 and annacar<(HCWdellen-1):
+			river=0
+			HCWdellen=len(hcwp)
+#	 		while annacar<6 and annacar<(HCWdellen-1):
 			for item in range(HCWdellen):
 				#annacar+=1
 				#print 'item',item
@@ -1582,9 +1588,9 @@ for jikn in filenames:
 				
 				statsamec_str=stringize(statsamec)
 				# print 'statsame center %i'%item,statsamec
-# 					print 'statsame width %i'%item, statsamew
-# 					print 'statsame height %i'%item,statsameh
-# 					print 'statsame phase %i'%item,statsamep
+#	 				print 'statsame width %i'%item, statsamew
+#	 				print 'statsame height %i'%item,statsameh
+#	 				print 'statsame phase %i'%item,statsamep
 				statsamew_str=stringize(statsamew)
 				statsamep_str=stringize(statsamep)
 				BICcompared=bic[river]-bestC
@@ -1653,9 +1659,9 @@ for jikn in filenames:
 						#print statsame_ip[nuth]
 						p.plot(ppm,statsame_ip[nuth],linewidth=linewidthgraph,color=color_all[di])
 				clarkh=setyl*(2.0/3.0)
-				print 'clarkh',clarkh
+				print('clarkh',clarkh)
 				if setyh==False:
- 					clarkh=-fac*rms	
+	 				clarkh=-fac*rms	
 				for t in leg.get_texts():
 					t.set_fontsize(legendfont)
 				if isinstance(setyh, float):
@@ -1813,10 +1819,10 @@ for jikn in filenames:
 				ax.set_xlim([leftview,rightview])
 			p.savefig(pdf, format='pdf')
 		
-		print 'done'
+		print('done')
 		
-		print 'c1end',c1
-		print 'ph1 end',ph1
+		print('c1end',c1)
+		print('ph1 end',ph1)
 		
 		
 		#################################  montecarlo ########################################################
@@ -1828,7 +1834,7 @@ for jikn in filenames:
 				p.figure( figsize=(15, 9))
 				sns.despine()
 				pcsucess=(monte_carlo[2]*100)/num_of_mc_peaks
-				print pcsucess
+				print(pcsucess)
 				p.title(('MinBIC=%.2f'%minBIC,'MaxBIC=%.2f'%maxBIC,'Number tried=%i'%num_of_mc_peaks,'pc success=%i'%pcsucess,))
 				if improved==True:
 					p.title(('Better mc!','MinBIC=%.2f'%minBIC,'MaxBIC=%.2f'%maxBIC,'MC tries=%i'%num_of_mc_peaks,'pc success=%0i'%pcsucess,))
@@ -1852,7 +1858,7 @@ for jikn in filenames:
 					summcpeak=lorentzDKp(ppm,item)
 					
 					mc_ip=extract_ind_peaks_b(item)
-					print 'mcip',mc_ip
+					print('mcip',mc_ip)
 					if mcdif1[c2]<-2:
 						betterpeakHCW1.append(mc_ip)
 						betterpeakhcw1.append(item)
@@ -1865,26 +1871,26 @@ for jikn in filenames:
 					elif -2>mcdif1[c2]>=-5:
 						colory='g'
 						#print 'mc found a better peak',colory
-						print 'mcdif1',mcdif1[c2]
-						print item
-						print '2.5to4.5better',item
+						print('mcdif1',mcdif1[c2])
+						print(item)
+						print('2.5to4.5better',item)
 						
 					elif -5>mcdif1[c2]>=-10:
 						colory='#FFA500'
-						print 'mc found a better peak',colory
-						print 'mcdif1',mcdif1[c2]
-						print '4.5to8.5better',item 
+						print('mc found a better peak',colory)
+						print('mcdif1',mcdif1[c2])
+						print('4.5to8.5better',item) 
 						#p.figtext(0.1,0.96,item,size='small')
 					elif mcdif1[c2]<-10:
 						colory='r'
-						print 'mc found a better peak',colory
-						print 'mcdif1',mcdif1[c2]
-						print 'more than 8.5 better',item
+						print('mc found a better peak',colory)
+						print('mcdif1',mcdif1[c2])
+						print('more than 8.5 better',item)
 						#p.figtext(0.1,0.94,item,size='small')
 						
 					p.plot(ppm,summcpeak,linewidth=0.3,color=colory)
 					for peak in mc_ip:
-						print 'peak',peak
+						print('peak',peak)
 						p.plot(ppm,peak,linewidth=0.3,color=colory)
 							
 					c2+=1
@@ -1930,7 +1936,7 @@ for jikn in filenames:
 				doit=False
 				if betterpeakHCW1:
 					doit=True
-					print 'doit=True##########'
+					print('doit=True##########')
 				lenbic1ed=len(betterbic1)
 				if doit==True:
 				
@@ -1938,7 +1944,7 @@ for jikn in filenames:
 					ax=p.subplot(111)
 					p.plot(ppm,Rawsmooth,linewidth=1,color='0.3')
 					if lenbic1ed > 1:
-						betterbic1, betterpeakhcw1, betterpeakHCW1= zip(*sorted(zip(betterbic1,betterpeakhcw1,betterpeakHCW1)))#sort the data by the centers
+						betterbic1, betterpeakhcw1, betterpeakHCW1= list(zip(*sorted(zip(betterbic1,betterpeakhcw1,betterpeakHCW1))))#sort the data by the centers
 					counteruy=-1
 					hytg=-1
 					while counteruy<3 and counteruy<(len(betterpeakHCW1)-1):
@@ -1949,15 +1955,15 @@ for jikn in filenames:
 								hytg+=1
 								if counteruy==0:
 									for i in item:
-										print 'i',i
-										print 'len(i)',len(i)
-										print 'len(ppm)',len(ppm)
+										print('i',i)
+										print('len(i)',len(i))
+										print('len(ppm)',len(ppm))
 										p.plot(ppm,i,linewidth=2,color='r')##BIC differend is between -2 and -4 (mc model may be better than best fitted evidence ratio between 2.7 and 7.4)
 								else:
 									for i in item:
-											print 'i',i
-											print 'len(i)',len(i)
-											print 'len(ppm)',len(ppm)
+											print('i',i)
+											print('len(i)',len(i))
+											print('len(ppm)',len(ppm))
 											p.plot(ppm,i,linewidth=1,color='0.5')##BIC differend is between -2 and -4 (mc model may be better than best fitted evidence ratio between 2.7 and 7.4)
 					p.title(('All the montecarlo fits (%.i -grey) that are stat same as best mc fit (red)'%hytg))		
 					p.xlabel('-ppm',fontsize=labelfont)
@@ -2033,7 +2039,7 @@ for jikn in filenames:
 		p.close('all')
 		###########you can export data to a csv file using the code below###################################		
 		# import csv
-# 		data_output=(ppm,Raw1)#####this is what data you want to export#############
-# 		writer = csv.writer(open(fn+"  "+".csv", "wb"))
-# 		for item in data_output:
-# 			writer.writerow(item)
+#	 	data_output=(ppm,Raw1)#####this is what data you want to export#############
+#	 	writer = csv.writer(open(fn+"  "+".csv", "wb"))
+#	 	for item in data_output:
+#	 		writer.writerow(item)
