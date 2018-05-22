@@ -25,7 +25,7 @@ savemetime=[False,True]
 for jikn in filenames:
 	for thgiu in savemetime:
 	
-		gaussian=False # if this = True then gaussian curves will be used instead of lorrentzian
+		gaussian=False # if this = True then gaussian curves will be used instead of lorentzian
 	
 		showgraphs=False ##if this =True then matplotlib interactive graphs will pop up, but if not only pdfs will be saved.
 		spectrum=True##if true this adds a color bar that shows color of various ppms.
@@ -406,7 +406,14 @@ for jikn in filenames:
 			dstep=int((dlen)/4)
 			c=0
 			for i in range(0,dstep):
-				ind_peaks[i]=something2[c]*(cos(something2[c+3])*(something2[c+2]**2/(something2[c+2]**2+(ppm-something2[c+1])**2))-sin(something2[c+3])*(-something2[c+2]*(ppm-something2[c+1]))/(something2[c+2]**2+(ppm-something2[c+1])**2))
+				if gaussian:
+					h1=something2[c]
+					c1=something2[c+1]
+					w1=something2[c+2]
+					phi=something2[c+3]
+					ind_peaks[i]=h1*n.exp(-(ppm-c1)**2/(2*w1**2))
+				else:
+					ind_peaks[i]=something2[c]*(cos(something2[c+3])*(something2[c+2]**2/(something2[c+2]**2+(ppm-something2[c+1])**2))-sin(something2[c+3])*(-something2[c+2]*(ppm-something2[c+1]))/(something2[c+2]**2+(ppm-something2[c+1])**2))
 				c=c+4
 			return ind_peaks
 			
@@ -416,7 +423,14 @@ for jikn in filenames:
 			dstep=int((dlen)/4)
 			c=0
 			for i in range(0,dstep):
-				ind_peaks.append(something2[c]*(cos(something2[c+3])*(something2[c+2]**2/(something2[c+2]**2+(ppm-something2[c+1])**2))-sin(something2[c+3])*(-something2[c+2]*(ppm-something2[c+1]))/(something2[c+2]**2+(ppm-something2[c+1])**2)))
+				if gaussian:
+					h1=something2[c]
+					c1=something2[c+1]
+					w1=something2[c+2]
+					phi=something2[c+3]
+					ind_peaks.append(h1*n.exp(-(ppm-c1)**2/(2*w1**2)))
+				else:
+					ind_peaks.append(something2[c]*(cos(something2[c+3])*(something2[c+2]**2/(something2[c+2]**2+(ppm-something2[c+1])**2))-sin(something2[c+3])*(-something2[c+2]*(ppm-something2[c+1]))/(something2[c+2]**2+(ppm-something2[c+1])**2)))
 				c=c+4
 			return ind_peaks
 					
