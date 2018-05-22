@@ -6,6 +6,7 @@ import sys
 import random
 import pylab as p
 import math as m
+from math import sin, cos, pi, log, ceil, exp
 from matplotlib.backends.backend_pdf import PdfPages
 import scipy.signal as sig
 import lmfit as lm
@@ -22,6 +23,9 @@ savemetime=[False,True]
 
 for jikn in filenames:
 	for thgiu in savemetime:
+	
+		gaussian=False # if this = True then gaussian curves will be used instead of lorrentzian
+	
 		showgraphs=False ##if this =True then matplotlib interactive graphs will pop up, but if not only pdfs will be saved.
 		spectrum=True##if true this adds a color bar that shows color of various ppms.
 		mancentcol=-84.5##False #84.75#85 # MUST be a floating point number! 67.0 This is to manually set center of peak coloring, this should ideally be centered at left or right end of peaks
@@ -52,7 +56,7 @@ for jikn in filenames:
 		showsmooth=True ##set this to True to show smoothed 
 		
 		colorblind=False
-		maxph=m.pi/50 #max limit for phase (automatically sets min as -max) of fit peaks if less than or equal to pi/50 then no BIC penalty
+		maxph=pi/50 #max limit for phase (automatically sets min as -max) of fit peaks if less than or equal to pi/50 then no BIC penalty
 		boty=False #controls whether end axis label is shown
 		topy=True#controls whether end axis label is shown
 		leftx=False#controls whether end axis label is shown
@@ -144,7 +148,7 @@ for jikn in filenames:
 		for i in range(dp):
 			ppm2=n.append(ppm2,current)
 			current-=step
-		Onewindow_length=m.ceil(stepsperhz*smoothwindow)
+		Onewindow_length=ceil(stepsperhz*smoothwindow)
 		if Onewindow_length <=2:
 			Onewindow_length=3
 		if Onewindow_length % 2 == 0:
@@ -263,30 +267,102 @@ for jikn in filenames:
 					temp[mrbubbs+2]=minFWHM+(minFWHM/1000)
 				if temp[mrbubbs+2]>=maxFWHM:
 					temp[mrbubbs+2]=maxFWHM-(minFWHM/1000)
-				if m.ceil(temp[mrbubbs+3]*1000)<=m.ceil(minph*1000):
+				if ceil(temp[mrbubbs+3]*1000)<=ceil(minph*1000):
 					temp[mrbubbs+3]=minph+(n.abs(minph)/10)
-				if m.ceil(temp[mrbubbs+3]*1000)>=m.ceil(maxph*1000):
+				if ceil(temp[mrbubbs+3]*1000)>=ceil(maxph*1000):
 					temp[mrbubbs+3]=maxph-(n.abs(maxph)/10)
 				mrbubbs+=4
 			return temp
+			
+		# same as lorentzDK (below), but using gaussian curves
+		def gaussianDK(params,ppm,Raw1,hcw_names):
+			dlen=len(params)  
+			dstep=int(dlen/4) # the number of gaussian curves to be summed
+			c=0
+			d2=0
+			
+			# iterate through each gaussian curve
+			for i in range(0,dstep):
+				h1 = params[hcw_names[c]].value# height of the peak
+				c1 = params[hcw_names[c+1]].value# position of the center of the peak
+				w1 = params[hcw_names[c+2]].value##w1 is HWHM (width of the "bell")
+				phi= params[hcw_names[c+3]].value# for gaussians, this is ignored
+				
+				# compute y-value(s) for one gaussian curve
+				# and increment d2
+				d2=d2+h1*n.exp(-(ppm-c1)**2/(2*w1**2))
+				c=c+4	
+			
+			# return residual(s)
+			return (Raw1-d2)
+					
 		def lorentzDK(params, ppm, Raw1,hcw_names):##this function works with the curve_fit function to turn curve_fit guesses for peak height center widths into an array of height values that is the model based on the HCW values.
-					dlen=len(params)
+					dlen=len(params)  
+					dstep=int(dlen/4) # the number of lorentz curves to be summed
+					c=0
+					d2=0
+					
+					# iterate through each lorentz curve
+					for i in range(0,dstep):
+						h1 = params[hcw_names[c]].value# height of the peak
+						c1 = params[hcw_names[c+1]].value# position of the center of the peak
+						w1 = params[hcw_names[c+2]].value##w1 is HWHM(width of the "bell")
+						phi= params[hcw_names[c+3]].value# lobsided-ness (if this is zero the curve is symmetrical)
+						
+						# compute y-value(s) for one lorentz curve
+						# and increment d2
+						d2=d2+h1*(                    \
+							cos(phi)*(                \
+								w1**2/                \
+								(w1**2+(ppm-c1)**2)   \
+							) -                       \
+							sin(phi)*(                \
+								(-w1*(ppm-c1))/       \
+								(w1**2+(ppm-c1)**2)   \
+							)                         \
+						) 
+						c=c+4	
+					
+					# return residual(s)
+					return (Raw1-d2)
+			
+			
+		# same as lorentzDKp (below), but using gaussian curves
+		def gaussianDKp(ppm, dataArray): 
+					dlen=len(dataArray)
 					dstep=int(dlen/4)
+					#print 'dstep p',dstep
 					c=0
 					d2=0
 					for i in range(0,dstep):
-						h1=params[hcw_names[c]].value
-						c1=params[hcw_names[c+1]].value
-						w1=params[hcw_names[c+2]].value
-						phi=params[hcw_names[c+3]].value
-						d2=d2+(h1*(m.cos(phi)*(w1**2/(w1**2+(ppm-c1)**2))-m.sin(phi)*((-w1*(ppm-c1))/(w1**2+(ppm-c1)**2)))) ##w1 is HWHM
+						h1=dataArray[c]
+						c1=dataArray[c+1]
+						w1=dataArray[c+2]
+						phi=dataArray[c+3]
+						d2=d2+h1*n.exp(-(ppm-c1)**2/(2*w1**2))
 						c=c+4	
-					
-					return (Raw1-d2)
+					return d2
+			
+		def lorentzDKp(ppm, dataArray): ##this is basically the same as lorentzDK it just can handle a dictionary of arrays input instead of a dictionary of lists which lorentzDK uses
+					dlen=len(dataArray)
+					dstep=int(dlen/4)
+					#print 'dstep p',dstep
+					c=0
+					d2=0
+					for i in range(0,dstep):
+						h1=dataArray[c]
+						c1=dataArray[c+1]
+						w1=dataArray[c+2]
+						phi=dataArray[c+3]
+						d2=d2+(h1*(cos(phi)*(w1**2/(w1**2+(ppm-c1)**2))-sin(phi)*((-w1*(ppm-c1))/(w1**2+(ppm-c1)**2)))) ##w1 is HWHM
+						c=c+4
+					return d2
+			
+		dkp_function = gaussianDKp if gaussian else lorentzDKp
 		
 		def fit(params, *args): #this function contains curve_fit which minimizes the difference between the data and the summaation of the lorentzian peaks that are specified by the Parameter_init dictionary of lists.
 			try: ## there are three tries given before giving up on fitting something.
-				result=lm.minimize(lorentzDK, params, args=(ppm,Raw1,hcw_names)) 
+				result=lm.minimize(gaussianDK if gaussian else lorentzDK, params, args=(ppm,Raw1,hcw_names)) 
 				return result 
 			except RuntimeError:
 				try:
@@ -295,14 +371,14 @@ for jikn in filenames:
 					print('params',params)
 					params[hcw_names[clen-3]].value=params[hcw_names[clen-3]].value+(random.uniform(-0.2,0.2)) ##this takes the last center try and changes it a small random amount to be used in the next attempt
 					params[hcw_names[clen-2]].value=params[hcw_names[clen-2]]/(random.uniform(5,20)) ##this takes the last width and decreases the width by dividing by 5 to 20 for next try
-					result=lm.minimize(lorentzDK, params, args=(ppm,Raw1,hcw_names)) 
+					result=lm.minimize(gaussianDK if gaussian else lorentzDK, params, args=(ppm,Raw1,hcw_names)) 
 					print('####################runtimeerror')
 					return result
 					
 				except RuntimeError:
 					try:
 						params[hcw_names[clen-2]].value=pw*(random.uniform(2,5)) ## this is the third try and increases the width beyond the original attempt
-						result=lm.minimize(lorentzDK, params, args=(ppm,Raw1,hcw_names)) 
+						result=lm.minimize(gaussianDK if gaussian else lorentzDK, params, args=(ppm,Raw1,hcw_names)) 
 						print('##############################runtimerror')
 						return result
 					except RuntimeError:
@@ -329,7 +405,7 @@ for jikn in filenames:
 			dstep=int((dlen)/4)
 			c=0
 			for i in range(0,dstep):
-				ind_peaks[i]=something2[c]*(m.cos(something2[c+3])*(something2[c+2]**2/(something2[c+2]**2+(ppm-something2[c+1])**2))-m.sin(something2[c+3])*(-something2[c+2]*(ppm-something2[c+1]))/(something2[c+2]**2+(ppm-something2[c+1])**2))
+				ind_peaks[i]=something2[c]*(cos(something2[c+3])*(something2[c+2]**2/(something2[c+2]**2+(ppm-something2[c+1])**2))-sin(something2[c+3])*(-something2[c+2]*(ppm-something2[c+1]))/(something2[c+2]**2+(ppm-something2[c+1])**2))
 				c=c+4
 			return ind_peaks
 			
@@ -339,24 +415,9 @@ for jikn in filenames:
 			dstep=int((dlen)/4)
 			c=0
 			for i in range(0,dstep):
-				ind_peaks.append(something2[c]*(m.cos(something2[c+3])*(something2[c+2]**2/(something2[c+2]**2+(ppm-something2[c+1])**2))-m.sin(something2[c+3])*(-something2[c+2]*(ppm-something2[c+1]))/(something2[c+2]**2+(ppm-something2[c+1])**2)))
+				ind_peaks.append(something2[c]*(cos(something2[c+3])*(something2[c+2]**2/(something2[c+2]**2+(ppm-something2[c+1])**2))-sin(something2[c+3])*(-something2[c+2]*(ppm-something2[c+1]))/(something2[c+2]**2+(ppm-something2[c+1])**2)))
 				c=c+4
 			return ind_peaks
-			
-		def lorentzDKp(ppm, dataArray): ##this is basically the same as lorentzDK it just can handle a dictionary of arrays input instead of a dictionary of lists which lorentzDK uses
-					dlen=len(dataArray)
-					dstep=int(dlen/4)
-					#print 'dstep p',dstep
-					c=0
-					d2=0
-					for i in range(0,dstep):
-						h1=dataArray[c]
-						c1=dataArray[c+1]
-						w1=dataArray[c+2]
-						phi=dataArray[c+3]
-						d2=d2+(h1*(m.cos(phi)*(w1**2/(w1**2+(ppm-c1)**2))-m.sin(phi)*((-w1*(ppm-c1))/(w1**2+(ppm-c1)**2)))) ##w1 is HWHM
-						c=c+4
-					return d2
 					
 		def lorentzDKz(dataArray): ##this takes and array of the heights, centers and widths (hcwarray) and seperates out into a list of three dictionarys that contain either heights centers or widths.
 					wi=[]
@@ -498,7 +559,7 @@ for jikn in filenames:
 		params.add('width1', value=pw, min=minFWHM, max=maxFWHM)
 		params.add('center1', value=c1, min=minc, max=maxc)
 		params.add('phase1', value=0, min=minph, max=maxph, vary=varyphi)
-		#print 'params', params
+		
 		evenodd=1
 		fittedpeaks=0
 		for number in range(peaks_to_fit):
@@ -508,7 +569,7 @@ for jikn in filenames:
 			pen=currentnum+1-(currentnum/4)
 			#print 'pen',pen
 			if maxph > 0.063:
-				kphi=maxph/m.pi
+				kphi=maxph/pi
 				pen=pen+((currentnum/4)*kphi)
 				#print 'pen+kphi',pen
 			fitted=extract_val(result.params)  ##see def
@@ -554,9 +615,9 @@ for jikn in filenames:
 				if lowsignoise==True:
 					c2=ppm[max_run_index]####this is the new initial center value, which is the ppm of the maximum value within the longest run of + residuals.
 				ph2=max_run_value  ####this is the new initial peak height value, which is the value of the largest (highest) residual in the longest run
-				twolnL[number]=-ppmlen*m.log(result.chisqr/ppmlen) ###part of BIC/AICc value calculation despite it's name result.chisqr is not chisquare but is instead the sum of the squared residuals.
+				twolnL[number]=-ppmlen*log(result.chisqr/ppmlen) ###part of BIC/AICc value calculation despite it's name result.chisqr is not chisquare but is instead the sum of the squared residuals.
 				AICc[number]=(2*pen-twolnL[number])+((2*pen*(k+1))/(ppmlen-pen-1))
-				BIC[number]=(mod*pen*m.log(ppmlen))-twolnL[number]
+				BIC[number]=(mod*pen*log(ppmlen))-twolnL[number]
 				p_1_width=(runlength*step)/4 ###this sets the initial value of the width of the peak at 1/4 the width of the longest run.
 				numberb+=4
 				somelist=[ph2,c2,p_1_width,0]
@@ -565,9 +626,14 @@ for jikn in filenames:
 				params.add(hcw_names[numberb], value=somelist[0], min=0.0, max=phmax)
 				params.add(hcw_names[numberb+1], value=somelist[1], min=minc, max=maxc)
 				params.add(hcw_names[numberb+2], value=somelist[2], min=minFWHM, max=maxFWHM)
-				params.add(hcw_names[numberb+3], value=somelist[3], min=minph, max=maxph, vary=varyphi)
+				params.add(hcw_names[numberb+3], value=somelist[3], min=minph, 
+				max=maxph, vary=varyphi)
+				
+				
 				evenodd+=1
 				k+=4
+				
+
 			except:
 				print('NOTE: fit only up to %.f peaks'%number)
 				break
@@ -605,7 +671,7 @@ for jikn in filenames:
 		bestHCWs=poptn[best_fitindex]
 		#print 'bestHCWsfirst',bestHCWs
 		number_of_peaks_start=best_fitindex+1
-		bestpeak=lorentzDKp(ppm,bestHCWs)
+		bestpeak=dkp_function(ppm,bestHCWs)
 		NP=n.arange(1,(numberb/4)+1)
 		bestC=BIC[best_fitindex]
 		bestAICc=AICc[best_fitindex]
@@ -656,7 +722,7 @@ for jikn in filenames:
 				pen=k+1-(k/4)
 				#print 'pen',pen
 				if maxph>0.063:
-					kphi=maxph/m.pi
+					kphi=maxph/pi
 					pen=pen+((k/4)*kphi)
 					#print 'pen+kphi',pen	
 				while C_com>-2 and cart<carty:
@@ -671,6 +737,7 @@ for jikn in filenames:
 						params.add(hcw_names[c+2], value=one_less_peak[cart][c+2], min=minFWHM, max=maxFWHM)
 						params.add(hcw_names[c+3], value=one_less_peak[cart][c+3], min=minph, max=maxph, vary=varyphi)
 						c+=4
+						
 					print('before fit %.i'%cart)
 					result2=fit(params)
 					print('after fit  %.i'%cart)
@@ -685,10 +752,10 @@ for jikn in filenames:
 					try:
 						poptz=poptv[cart]
 						overall[set]['stanerror'][cart]=stanerr[cart]
-						overall[set]['peaks_refit'][cart]=lorentzDKp(ppm,poptz)
+						overall[set]['peaks_refit'][cart]=dkp_function(ppm,poptz)
 						overall[set]['hcwarray_refit'][cart]=poptz
-						twolnL_refit=-ppmlen*m.log(result2.chisqr/ppmlen) ###part of BIC/AICc value calculation despite it's name result.chisqr is not chisquare but is instead the sum of the squared residuals.
-						overall[set]['BIC_refit'][cart]=(mod*pen*m.log(ppmlen))-twolnL_refit
+						twolnL_refit=-ppmlen*log(result2.chisqr/ppmlen) ###part of BIC/AICc value calculation despite it's name result.chisqr is not chisquare but is instead the sum of the squared residuals.
+						overall[set]['BIC_refit'][cart]=(mod*pen*log(ppmlen))-twolnL_refit
 						overall[set]['AICc_refit'][cart]=(2*pen)-twolnL_refit+((2*pen*(pen+1))/(ppmlen-pen-1))
 						if exhaust == False:
 							compare=overall[set]['BIC_refit'][cart]-bestC
@@ -822,7 +889,7 @@ for jikn in filenames:
 				pen=currentnum+1-(currentnum/4)
 				#print 'pen',pen
 				if maxph>0.063:
-					kphi=maxph/m.pi
+					kphi=maxph/pi
 					pen=pen+((currentnum/4)*kphi)
 					#print 'pen+kphi',pen
 				hcwpsplit=[]
@@ -840,9 +907,11 @@ for jikn in filenames:
 						params.add(hcw_names[c+2], value=thing[c+2], min=minFWHM, max=maxFWHM)
 						params.add(hcw_names[c+3], value=thing[c+3], min=minph, max=maxph, vary=varyphi)
 						c+=4
+					
+				
 					result2=fit(params)	
-					twolnL=-ppmlen*m.log(result2.chisqr/ppmlen) ###part of BIC/AICc value calculation despite it's name result.chisqr is not chisquare but is instead the sum of the squared residuals.
-					BIC_split=(mod*(pen)*m.log(ppmlen))-twolnL ###the +1 on the k is emperical.
+					twolnL=-ppmlen*log(result2.chisqr/ppmlen) ###part of BIC/AICc value calculation despite it's name result.chisqr is not chisquare but is instead the sum of the squared residuals.
+					BIC_split=(mod*(pen)*log(ppmlen))-twolnL ###the +1 on the k is emperical.
 					BIC_compare_split=BIC_split-BICin
 					print('BIC_compare_split',BIC_compare_split)
 					print('number of peaks=%.f'%(k/4))
@@ -884,7 +953,7 @@ for jikn in filenames:
 			pen=currentnum+1-(currentnum/4)
 			#print 'pen',pen
 			if maxph>0.063:
-				kphi=maxph/m.pi
+				kphi=maxph/pi
 				pen=pen+((currentnum/4)*kphi)
 				#print 'pen+kphi',pen
 			if STDER[0]==0:
@@ -933,8 +1002,8 @@ for jikn in filenames:
 						c+=4
 				#print 'params before mc', paramsmc
 				result3=fit(paramsmc)
-				mctwolnL=-ppmlen*m.log(result3.chisqr/ppmlen) ###part of BIC/AICc value calculation despite it's name result.chisqr is not chisquare but is instead the sum of the squared residuals.
-				mcBIC=(mod*(pen)*m.log(ppmlen))-mctwolnL
+				mctwolnL=-ppmlen*log(result3.chisqr/ppmlen) ###part of BIC/AICc value calculation despite it's name result.chisqr is not chisquare but is instead the sum of the squared residuals.
+				mcBIC=(mod*(pen)*log(ppmlen))-mctwolnL
 				comp2=mcBIC-bestC
 				print('mcBIC-bestC',comp2)
 				if comp2<Plimit:
@@ -1108,14 +1177,13 @@ for jikn in filenames:
 			monte_carlo=montecarlo(inputsplit)
 			print('monte carlo ran!!!!!!!')
 			#print 'monte_carlo',monte_carlo
-			
 				
 			if monte_carlo[0]==True:
 				#print 'mc_BIC_list',mc_BIC_list
 				mc_peaks=[]
 				#print 'mc_hcw_list just after fit', mc_hcw_list
 				for item in mc_hcw_list:
-					mc_peaks.append(lorentzDKp(ppm,item))
+					mc_peaks.append(dkp_function(ppm,item))
 				minBIC=min(mc_BIC_list)
 				maxBIC=max(mc_BIC_list)
 				print('minBIC',minBIC)
@@ -1335,7 +1403,9 @@ for jikn in filenames:
 		p.title((fn,'Splitbest?',splitbest,'peak(s)',numpeaksbest,'BIC=%.2f'%bicfilt[0],'Width of data used in fit displayed'))
 		curves1=('Raw data','Best fit','Residual')
 		p.plot(ppm,Raw1,linewidth=1,color='k')
-		sumpeak=lorentzDKp(ppm,hcwfilt[0])
+		
+		
+		sumpeak=dkp_function(ppm,hcwfilt[0])
 		p.plot(ppm,sumpeak,linewidth=1,color='green')
 		if plotresid==True:
 			residualmain=Raw1-sumpeak
@@ -1484,14 +1554,15 @@ for jikn in filenames:
 				p.figtext(0.01,0.98,statsamec_str,size='small')
 				p.figtext(0.01,0.96,statsamew_str,size='small')
 				p.figtext(0.5,0.98,statsamep_str,size='small')
-				eviratio=1/(m.exp(0.5*BICcompared))
+				eviratio=1/(exp(0.5*BICcompared))
 				#p.figtext(0.5,0.96,,size='small')
 				p.title((fn,'BIC=%.2f'%bic[item],'%.i peaks'%numpeak,'Rel. BIC= %.2f'%BICcompared,'Rel. likelihood of model=%.3f'%eviratio))##relative likelihood is from page 74 of Burnham and Anderson "model selection and multimodel inference" 2002 second edition Springer
 				if showsmooth==True:
 					p.plot(ppm,Rawsmooth,linewidth=linewidthgraph,color='K')
 				else: 
 					p.plot(ppm,Raw1,linewidth=linewidthgraph,color='K')
-				sumpeak=lorentzDKp(ppm,hcwp[item])
+					
+				sumpeak=dkp_function(ppm,hcwp[item])
 				p.plot(ppm,sumpeak,linewidth=linewidthgraph,color='green')
 				if plotresid==True:
 					residualmain=Raw1-sumpeak
@@ -1611,7 +1682,7 @@ for jikn in filenames:
 					p.plot(ppm,Rawsmooth,linewidth=linewidthgraph,color='K')
 				else:
 					p.plot(ppm,Raw1,linewidth=linewidthgraph,color='K')
-				sumpeak=lorentzDKp(ppm,hcwp[item])
+				sumpeak=dkp_function(ppm,hcwp[item])
 				p.plot(ppm,sumpeak,linewidth=linewidthgraph,color='green')
 				#if plotresid==True:
 				residualmain=Raw1-sumpeak
@@ -1725,9 +1796,8 @@ for jikn in filenames:
 			#print 'inputindpeaks[0][maxindex1]',inputindpeaks[0][0][maxindex1]
 			
 			#print 'integratearray',integratearray
-			
 			for item in feedf:
-				feedpeak.append(lorentzDKp(ppm,item))
+				feedpeak.append(dkp_function(ppm,item))
 			
 			feedpeakmax=n.max(feedpeak[0])
 			bestpeakmax=n.max(bestpeak)
@@ -1855,7 +1925,7 @@ for jikn in filenames:
 				#print 'mc_hcw_list',mc_hcw_list
 				for item in mc_hcw_list:
 					mc_ip=[]
-					summcpeak=lorentzDKp(ppm,item)
+					summcpeak=dkp_function(ppm,item)
 					
 					mc_ip=extract_ind_peaks_b(item)
 					print('mcip',mc_ip)
@@ -1938,6 +2008,7 @@ for jikn in filenames:
 					doit=True
 					print('doit=True##########')
 				lenbic1ed=len(betterbic1)
+				
 				if doit==True:
 				
 					p.figure( figsize=(15, 9))
