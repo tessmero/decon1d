@@ -1451,6 +1451,7 @@ for jikn in filenames:
 		output_table.index.name = "ppm"
 		output_table["raw data"] = Raw1
 		output_table["sum of fit curves"] = sumpeak
+		output_table["residuals"] = Raw1 - sumpeak
 		for i in range(int(len(hcwfilt[0])/4)):
 			output_table["fit curve " + str(i+1)] = dkp_function(ppm,hcwfilt[0][i*4:i*4+4])
 		output_table.to_csv(fn+whichcols+'_'+phase+fares+lenfilts+howdo+".csv")
