@@ -1,5 +1,6 @@
 import traceback
 
+import pandas as pd
 import numpy as n
 import seaborn as sns
 import sys
@@ -1404,8 +1405,8 @@ for jikn in filenames:
 		curves1=('Raw data','Best fit','Residual')
 		p.plot(ppm,Raw1,linewidth=1,color='k')
 		
-		
 		sumpeak=dkp_function(ppm,hcwfilt[0])
+		
 		p.plot(ppm,sumpeak,linewidth=1,color='green')
 		if plotresid==True:
 			residualmain=Raw1-sumpeak
@@ -1443,6 +1444,16 @@ for jikn in filenames:
 		p.xlabel('Peaks in fit')
 		p.ylabel('Value')
 		p.savefig(pdf, format='pdf')
+		
+		
+		# save fit curves, sum, and raw data to a csv
+		output_table = pd.DataFrame(index=ppm)
+		output_table.index.name = "ppm"
+		output_table["raw data"] = Raw1
+		output_table["sum of fit curves"] = sumpeak
+		for i in range(int(len(hcwfilt[0])/4)):
+			output_table["fit curve " + str(i+1)] = dkp_function(ppm,hcwfilt[0][i*4:i*4+4])
+		output_table.to_csv(fn+whichcols+'_'+phase+fares+lenfilts+howdo+".csv")
 		
 		ppmshort=ppm[40:-40:5] ##########This adjusts the number of colored dots in the spectrum
 		
